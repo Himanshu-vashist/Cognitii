@@ -1,4 +1,4 @@
-package com.cognitiitest
+package com.cognitti.app
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

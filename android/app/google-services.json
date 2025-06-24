@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "444204454089",
+    "project_id": "cognitti-test",
+    "storage_bucket": "cognitti-test.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:444204454089:android:0dd5870e8d8a630ed63d18",
+        "android_client_info": {
+          "package_name": "com.cognitti.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlkeHaZpLFBMfXzpHoPx8hfQa1eRG38ck"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -7,12 +7,19 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
+    "server": "cd server && npm start",
     "test": "jest"
   },
   "dependencies": {
+    "@react-native-firebase/app": "^22.2.1",
+    "@react-native-firebase/firestore": "^22.2.1",
+    "@react-native/new-app-screen": "0.80.0",
+    "@react-navigation/native": "^7.1.14",
+    "@react-navigation/stack": "^7.4.2",
     "react": "19.1.0",
     "react-native": "0.80.0",
-    "@react-native/new-app-screen": "0.80.0"
+    "react-native-safe-area-context": "^5.5.0",
+    "react-native-screens": "^4.11.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -24,7 +31,7 @@
     "@react-native/babel-preset": "0.80.0",
     "@react-native/eslint-config": "0.80.0",
     "@react-native/metro-config": "0.80.0",
-    "@react-native/typescript-config": "0.80.0",
+    "@react-native/typescript-config": "^0.80.0",
     "@types/jest": "^29.5.13",
     "@types/react": "^19.1.0",
     "@types/react-test-renderer": "^19.1.0",
