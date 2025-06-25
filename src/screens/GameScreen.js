@@ -1,124 +1,277 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, Alert } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 
-const GameScreen = ({ navigation }) => {
-  const [assets, setAssets] = useState([]);
-  const [shuffledAssets, setShuffledAssets] = useState([]);
-  const [oddOneOut, setOddOneOut] = useState(null);
-  const [correctAsset, setCorrectAsset] = useState(null);
-  const [score, setScore] = useState({ correct: 0, incorrect: 0 });
-  const [startTime, setStartTime] = useState(null);
-  const [loading, setLoading] = useState(true);
+const { width, height } = Dimensions.get('window');
 
-  useEffect(() => {
-    fetch('http://localhost:3000/assets')
-      .then(response => response.json())
-      .then(data => {
-        if (data.length === 0) {
-          Alert.alert('Error', 'No assets found on the server. Please make sure the server is running and assets are available.');
-          setLoading(false);
-          return;
-        }
-        setAssets(data);
-        setupGame(data);
-        setStartTime(new Date());
-        setLoading(false);
-      })
-      .catch(error => {
-        console.error(error);
-        Alert.alert('Server Error', 'Could not connect to the asset server. Please make sure it is running.');
-        setLoading(false);
-      });
-  }, []);
+const images = [
+  { id: 1, src: 'http://192.168.253.130:3000/assets/bear.png', label: 'Bear' },
+  { id: 2, src: 'http://192.168.253.130:3000/assets/lion.png', label: 'Lion' },
+];
 
-  const setupGame = (currentAssets) => {
-    if (currentAssets.length < 2) return;
+const words = [
+  { id: 1, text: 'Bear' },
+  { id: 2, text: 'Lion' },
+];
 
-    let oddOneOutIndex = Math.floor(Math.random() * currentAssets.length);
-    let correctAssetIndex = Math.floor(Math.random() * currentAssets.length);
-    while (correctAssetIndex === oddOneOutIndex) {
-      correctAssetIndex = Math.floor(Math.random() * currentAssets.length);
-    }
+function isMatched(matches, type, id) {
+  return matches.some(m => m[type] === id);
+}
 
-    const oddAsset = currentAssets[oddOneOutIndex];
-    const correct = currentAssets[correctAssetIndex];
-    setOddOneOut(oddAsset);
-    setCorrectAsset(correct);
+export default function GameScreen({ navigation }) {
+  const [matches, setMatches] = useState([]); // [{imageId, wordId}]
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedWord, setSelectedWord] = useState(null);
+  const startTimeRef = useRef(Date.now());
 
-    let newShuffledAssets = [correct, correct, correct, oddAsset];
-    newShuffledAssets.sort(() => Math.random() - 0.5);
-    setShuffledAssets(newShuffledAssets);
+  // Improved matching: select image, then word, then create match
+  const handleImagePress = (id) => {
+    setSelectedImage(id);
+    setSelectedWord(null);
   };
 
-  const handlePress = (asset) => {
-    const endTime = new Date();
-    const timeTaken = (endTime - startTime) / 1000;
-
-    if (asset === oddOneOut) {
-      const newScore = { ...score, correct: score.correct + 1 };
-      setScore(newScore);
-      firestore()
-        .collection('scores')
-        .add({
-          time: timeTaken,
-          correct: newScore.correct,
-          incorrect: newScore.incorrect,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        })
-        .then(() => {
-          navigation.navigate('Success', {
-            time: timeTaken,
-            correct: newScore.correct,
-            incorrect: newScore.incorrect,
-          });
-        });
+  const handleWordPress = (id) => {
+    if (selectedImage && !matches.find(m => m.imageId === selectedImage || m.wordId === id)) {
+      setMatches([...matches, { imageId: selectedImage, wordId: id }]);
+      setSelectedImage(null);
+      setSelectedWord(null);
     } else {
-      const newScore = { ...score, incorrect: score.incorrect + 1 };
-      setScore(newScore);
-      Alert.alert('Incorrect!', 'Please try again.');
+      setSelectedWord(id);
     }
   };
 
-  if (loading) {
-    return <ActivityIndicator size="large" style={styles.container} />;
-  }
+  const handleNext = async () => {
+    if (matches.length < 2) {
+      Alert.alert('Complete the matches', 'Please match both images to words before continuing.');
+      return;
+    }
+    // Calculate correct/incorrect
+    let correct = 0;
+    matches.forEach(match => {
+      const img = images.find(i => i.id === match.imageId);
+      const word = words.find(w => w.id === match.wordId);
+      if (img && word && img.label === word.text) correct++;
+    });
+    const incorrect = matches.length - correct;
+    const time = (Date.now() - startTimeRef.current) / 1000;
+    // Save to Firestore
+    try {
+      await firestore().collection('scores').add({
+        time,
+        correct,
+        incorrect,
+        createdAt: firestore.FieldValue.serverTimestamp(),
+      });
+      console.log('Score saved to Firestore');
+      Alert.alert('Success', 'Score saved to Firestore!');
+    } catch (e) {
+      console.error('Firestore error:', e);
+      Alert.alert('Firestore Error', e.message || 'Failed to save score.');
+    }
+    navigation.replace('Success', { time, correct, incorrect });
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Find the odd one out</Text>
-      <View style={styles.grid}>
-        {shuffledAssets.map((asset, index) => (
-          <TouchableOpacity key={index} onPress={() => handlePress(asset)}>
-            <Image source={{ uri: asset }} style={styles.image} />
-          </TouchableOpacity>
-        ))}
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Initial')}>
+          <Text style={styles.icon}>🏠</Text>
+        </TouchableOpacity>
+        <Text style={styles.progress}>1/1</Text>
+        <TouchableOpacity style={styles.iconButton}>
+          <Text style={styles.icon}>🔊</Text>
+        </TouchableOpacity>
       </View>
+      {/* Instruction */}
+      <Text style={styles.title}>Can you match what goes together?</Text>
+      {/* Game Area */}
+      <View style={styles.gameArea}>
+        <View style={styles.col}>
+          {images.map((img) => {
+            const matched = isMatched(matches, 'imageId', img.id);
+            return (
+              <TouchableOpacity
+                key={img.id}
+                style={[
+                  styles.imageBox,
+                  selectedImage === img.id && styles.selected,
+                  matched && styles.matched,
+                ]}
+                onPress={() => handleImagePress(img.id)}
+                activeOpacity={0.8}
+              >
+                <Image source={{ uri: img.src }} style={styles.image} />
+                {matched && <Text style={styles.checkmark}>✔️</Text>}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <View style={styles.col}>
+          {words.map((word) => {
+            const matched = isMatched(matches, 'wordId', word.id);
+            return (
+              <TouchableOpacity
+                key={word.id}
+                style={[
+                  styles.wordBox,
+                  selectedWord === word.id && styles.selected,
+                  matched && styles.matched,
+                ]}
+                onPress={() => handleWordPress(word.id)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.word}>{word.text}</Text>
+                {matched && <Text style={styles.checkmark}>✔️</Text>}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+      {/* Next Button */}
+      <TouchableOpacity style={styles.nextButton} onPress={handleNext} activeOpacity={0.85}>
+        <Text style={styles.nextButtonText}>→</Text>
+      </TouchableOpacity>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    backgroundColor: '#FFF3C7',
     alignItems: 'center',
+    paddingTop: 0,
+  },
+  header: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingTop: 36,
+    marginBottom: 8,
+  },
+  iconButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+  },
+  icon: {
+    fontSize: 22,
+  },
+  progress: {
+    fontSize: 16,
+    color: '#6C63FF',
+    fontWeight: 'bold',
   },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
+    marginBottom: 18,
+    color: '#222',
+    textAlign: 'center',
+    width: '90%',
+  },
+  gameArea: {
+    flexDirection: 'row',
+    width: '90%',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flex: 1,
+    minHeight: height * 0.5,
+    marginTop: 10,
     marginBottom: 20,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  col: {
+    flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  image: {
-    width: 150,
-    height: 150,
-    margin: 10,
+  imageBox: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    marginVertical: 22,
+    padding: 18,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    width: 90,
+    height: 90,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    position: 'relative',
   },
-});
-
-export default GameScreen; 
+  image: {
+    width: 60,
+    height: 60,
+    resizeMode: 'contain',
+  },
+  wordBox: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    marginVertical: 22,
+    paddingHorizontal: 36,
+    paddingVertical: 22,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    minWidth: 100,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    position: 'relative',
+  },
+  word: {
+    fontSize: 22,
+    color: '#222',
+    fontWeight: 'bold',
+  },
+  selected: {
+    borderColor: '#6C63FF',
+    backgroundColor: '#E6E4FF',
+  },
+  matched: {
+    backgroundColor: '#D4F8E8',
+    borderColor: '#4BB543',
+    opacity: 1,
+  },
+  checkmark: {
+    position: 'absolute',
+    top: 6,
+    right: 8,
+    fontSize: 22,
+    color: '#4BB543',
+    fontWeight: 'bold',
+    backgroundColor: 'transparent',
+  },
+  nextButton: {
+    backgroundColor: '#FFB300',
+    borderRadius: 32,
+    padding: 22,
+    position: 'absolute',
+    bottom: 44,
+    right: 36,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+  },
+  nextButtonText: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: 'bold',
+  },
+}); 

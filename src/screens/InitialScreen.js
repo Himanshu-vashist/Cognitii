@@ -1,41 +1,62 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 
-const InitialScreen = ({ navigation }) => {
+export default function InitialScreen({ navigation }) {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome to the Game!</Text>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('Game')}
-      >
+      <View style={styles.header}>
+        <Text style={styles.title}>Cognitii Game</Text>
+        <Text style={styles.subtitle}>Can you match what goes together?</Text>
+      </View>
+      <Image source={require('../../server/assets/bear.png')} style={styles.illustration} />
+      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Game')}>
         <Text style={styles.buttonText}>Start Game</Text>
       </TouchableOpacity>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    backgroundColor: '#FFF3C7',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
   },
   title: {
-    fontSize: 24,
+    fontSize: 36,
     fontWeight: 'bold',
-    marginBottom: 30,
+    color: '#222',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 20,
+    color: '#444',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  illustration: {
+    width: 180,
+    height: 180,
+    resizeMode: 'contain',
+    marginBottom: 40,
   },
   button: {
-    backgroundColor: '#007BFF',
-    padding: 15,
-    borderRadius: 5,
+    backgroundColor: '#6C63FF',
+    paddingHorizontal: 48,
+    paddingVertical: 18,
+    borderRadius: 32,
+    elevation: 3,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 22,
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
-});
-
-export default InitialScreen; 
+}); 

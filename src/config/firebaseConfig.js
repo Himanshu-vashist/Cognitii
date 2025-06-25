@@ -1,3 +1,5 @@
+// Firebase config is handled by @react-native-firebase/app in this project. No JS SDK initialization is needed here.
+
 const firebaseConfig = {
     apiKey: "AIzaSyAZHfgyCdU4QyvHw8GJoE6HpQTCeOu2sJ8",
     authDomain: "cognitti-test.firebaseapp.com",
